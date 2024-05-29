@@ -43,6 +43,8 @@ import org.apache.guacamole.net.auth.credentials.CredentialsInfo;
 import org.apache.guacamole.totp.TOTPGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.privacyidea.PrivacyIDEA;
+import org.privacyidea.PIResponse;
 
 /**
  * Service for verifying the identity of a user using TOTP.
@@ -76,6 +78,12 @@ public class UserVerificationService {
      */
     @Inject
     private Provider<AuthenticationCodeField> codeFieldProvider;
+
+    private int maxretries = 120;
+
+    private PrivacyIDEA privacyIDEA;
+
+    private String transactionID = "";
 
     /**
      * Retrieves and decodes the base32-encoded TOTP key associated with user
@@ -204,6 +212,25 @@ public class UserVerificationService {
 
     }
 
+    public boolean doPushSynchronous() {
+        boolean authok = false;
+        int retries = 0;
+
+        if (transactionID.isEmpty())
+            return false;
+
+        while (!authok) {
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {}
+            authok = privacyIDEA.pollTransaction(transactionID);
+            retries++;
+            if (retries > maxretries) break;
+        }
+
+        return authok;
+    }
+
     /**
      * Verifies the identity of the given user using TOTP. If a authentication
      * code from the user's TOTP device has not already been provided, a code is
@@ -242,6 +269,8 @@ public class UserVerificationService {
         // Retrieve TOTP from request
         String code = request.getParameter(AuthenticationCodeField.PARAMETER_NAME);
 
+        String PrivacyIDEAHost = confService.getPrivacyIDEAHost();
+
         // If no TOTP provided, request one
         if (code == null) {
 
@@ -258,6 +287,15 @@ public class UserVerificationService {
                         ));
             }
 
+            if (PrivacyIDEAHost != null) {
+                // Otherwise simply request the user's confirmation
+                throw new TranslatableGuacamoleInsufficientCredentialsException(
+                        "A TOTP confirmation is required before login can "
+                        + "continue", "TOTP.INFO_CONFIRMATION_REQUIRED", new CredentialsInfo(
+                            Collections.<Field>singletonList(field)
+                        ));
+            }
+
             // Otherwise simply request the user's authentication code
             throw new TranslatableGuacamoleInsufficientCredentialsException(
                     "A TOTP authentication code is required before login can "
@@ -266,6 +304,27 @@ public class UserVerificationService {
                     ));
 
         }
+
+        if (code.isEmpty() && PrivacyIDEAHost != null) {
+            privacyIDEA = PrivacyIDEA.newBuilder(PrivacyIDEAHost, "guacamole")
+                                 .sslVerify(false)
+                                 .logger(new PILogImplementation())
+                                 .simpleLogger(System.out::println)
+                                 .build();
+
+            if (transactionID.isEmpty()) {
+                PIResponse initialResponse = privacyIDEA.validateCheck(username, null);
+
+                if (initialResponse != null)
+                    transactionID = initialResponse.transactionID;
+
+                if (doPushSynchronous())
+                    return;
+            } else {
+                if (doPushSynchronous())
+                    return;
+            }
+	}
 
         try {
 

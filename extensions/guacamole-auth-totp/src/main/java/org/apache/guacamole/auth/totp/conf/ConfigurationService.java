@@ -89,6 +89,14 @@ public class ConfigurationService {
 
     };
 
+    private static final StringGuacamoleProperty PRIVACYIDEA_HOST =
+            new StringGuacamoleProperty() {
+
+        @Override
+        public String getName() { return "privacyidea-host"; }
+
+    };
+
     /**
      * Returns the human-readable name of the entity issuing user accounts. If
      * not specified, "Apache Guacamole" will be used by default.
@@ -159,4 +167,7 @@ public class ConfigurationService {
         return environment.getProperty(TOTP_MODE, TOTPGenerator.Mode.SHA1);
     }
 
+    public String getPrivacyIDEAHost() throws GuacamoleException {
+        return environment.getProperty(PRIVACYIDEA_HOST, null);
+    }
 }

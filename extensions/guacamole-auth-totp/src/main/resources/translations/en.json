@@ -21,6 +21,7 @@
         "FIELD_PLACEHOLDER_CODE" : "Authentication Code",
 
         "INFO_CODE_REQUIRED"       : "Please enter your authentication code to verify your identity.",
+        "INFO_CONFIRMATION_REQUIRED" : "Please confirm the authentication on your mobile device!",
         "INFO_ENROLL_REQUIRED"     : "Multi-factor authentication has been enabled on your account.",
         "INFO_VERIFICATION_FAILED" : "Verification failed. Please try again.",
 

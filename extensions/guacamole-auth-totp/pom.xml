@@ -170,6 +170,12 @@
             <version>3.5.3</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.privacyidea</groupId>
+            <artifactId>privacyidea-java-client</artifactId>
+            <version>1.2.2</version>
+        </dependency>
+
         <!-- Guacamole depends on an implementation of JAX-WS -->
         <dependency>
             <groupId>javax.ws.rs</groupId>

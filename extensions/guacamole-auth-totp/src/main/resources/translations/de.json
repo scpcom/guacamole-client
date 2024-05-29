@@ -21,6 +21,7 @@
         "FIELD_PLACEHOLDER_CODE" : "Authentifizierungs-Code",
 
         "INFO_CODE_REQUIRED"       : "Bitte geben Sie Ihren Authentifizierungs-Code ein, um Ihre Identität zu bestätigen.",
+        "INFO_CONFIRMATION_REQUIRED" : "Bitte bestätigen Sie die Authentifizierung auf Ihrem mobilen Gerät!",
         "INFO_ENROLL_REQUIRED"     : "Die Zweifaktor-Authentifizierung wurde für Ihren Account aktiviert.",
         "INFO_VERIFICATION_FAILED" : "Verifikation fehlgeschlagen. Bitte nochmals versuchen.",
 
