@@ -23,6 +23,8 @@ import com.google.common.io.BaseEncoding;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import java.security.InvalidKeyException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,6 +34,7 @@ import org.apache.guacamole.GuacamoleSecurityException;
 import org.apache.guacamole.GuacamoleUnsupportedException;
 import org.apache.guacamole.auth.totp.conf.ConfigurationService;
 import org.apache.guacamole.auth.totp.form.AuthenticationCodeField;
+import org.apache.guacamole.auth.totp.form.PrivacyIDEAStateField;
 import org.apache.guacamole.form.Field;
 import org.apache.guacamole.language.TranslatableGuacamoleClientException;
 import org.apache.guacamole.language.TranslatableGuacamoleInsufficientCredentialsException;
@@ -212,23 +215,45 @@ public class UserVerificationService {
 
     }
 
+    public boolean doPushRequest(String username) {
+        if (transactionID == "timeout")
+            return false;
+
+        PIResponse initialResponse = privacyIDEA.validateCheck(username, null);
+
+        if (initialResponse != null)
+            transactionID = initialResponse.transactionID;
+
+        if (transactionID == null || transactionID.isEmpty())
+            return false;
+
+        return true;
+    }
+
     public boolean doPushSynchronous() {
         boolean authok = false;
         int retries = 0;
 
-        if (transactionID.isEmpty())
+        if (transactionID == null || transactionID.isEmpty())
+            return false;
+        if (transactionID == "timeout")
             return false;
 
         while (!authok) {
             try {
-                Thread.sleep(50);
+                Thread.sleep(250);
             } catch (InterruptedException e) {}
             authok = privacyIDEA.pollTransaction(transactionID);
             retries++;
             if (retries > maxretries) break;
         }
 
-        return authok;
+        if (authok)
+            return true;
+
+        transactionID = "timeout";
+
+        return false;
     }
 
     /**
@@ -268,8 +293,23 @@ public class UserVerificationService {
 
         // Retrieve TOTP from request
         String code = request.getParameter(AuthenticationCodeField.PARAMETER_NAME);
+        transactionID = request.getParameter(PrivacyIDEAStateField.PARAMETER_NAME);
 
         String PrivacyIDEAHost = confService.getPrivacyIDEAHost();
+
+        if (PrivacyIDEAHost != null) {
+            privacyIDEA = PrivacyIDEA.newBuilder(PrivacyIDEAHost, "guacamole")
+                                 .sslVerify(false)
+                                 .logger(new PILogImplementation())
+                                 .simpleLogger(System.out::println)
+                                 .build();
+
+            if (doPushSynchronous())
+                return;
+
+            if (transactionID == "timeout")
+                code = null;
+        }
 
         // If no TOTP provided, request one
         if (code == null) {
@@ -288,11 +328,16 @@ public class UserVerificationService {
             }
 
             if (PrivacyIDEAHost != null) {
+                Collection<Field> fieldList = Collections.<Field>singletonList(field);
+
+                if (doPushRequest(username))
+                    fieldList = Arrays.asList(field, new PrivacyIDEAStateField(transactionID));
+
                 // Otherwise simply request the user's confirmation
                 throw new TranslatableGuacamoleInsufficientCredentialsException(
                         "A TOTP confirmation is required before login can "
                         + "continue", "TOTP.INFO_CONFIRMATION_REQUIRED", new CredentialsInfo(
-                            Collections.<Field>singletonList(field)
+                            fieldList
                         ));
             }
 
@@ -304,27 +349,6 @@ public class UserVerificationService {
                     ));
 
         }
-
-        if (code.isEmpty() && PrivacyIDEAHost != null) {
-            privacyIDEA = PrivacyIDEA.newBuilder(PrivacyIDEAHost, "guacamole")
-                                 .sslVerify(false)
-                                 .logger(new PILogImplementation())
-                                 .simpleLogger(System.out::println)
-                                 .build();
-
-            if (transactionID.isEmpty()) {
-                PIResponse initialResponse = privacyIDEA.validateCheck(username, null);
-
-                if (initialResponse != null)
-                    transactionID = initialResponse.transactionID;
-
-                if (doPushSynchronous())
-                    return;
-            } else {
-                if (doPushSynchronous())
-                    return;
-            }
-	}
 
         try {
 

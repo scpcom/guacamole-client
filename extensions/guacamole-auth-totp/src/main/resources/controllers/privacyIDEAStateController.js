@@ -18,23 +18,14 @@
  */
 
 /**
- * Config block which registers TOTP-specific field types.
+ * Controller for the "GUAC_PRIVACYIDEA_STATE" field which is used to pass
+ * the privacyIDEA server state to maintain the session with the privacyIDEA
+ * server.
  */
-angular.module('guacTOTP').config(['formServiceProvider',
-    function guacTOTPConfig(formServiceProvider) {
+angular.module('guacTOTP').controller('privacyIDEAStateController', ['$scope', '$injector',
+        function privacyIDEAStateController($scope, $injector) {
 
-    // Define field for the TOTP code provided by the user
-    formServiceProvider.registerFieldType('GUAC_TOTP_CODE', {
-        module      : 'guacTOTP',
-        controller  : 'authenticationCodeFieldController',
-        templateUrl : 'app/ext/totp/templates/authenticationCodeField.html'
-    });
-
-    // Define the hidden field for the privacyIDEA state
-    formServiceProvider.registerFieldType('GUAC_PRIVACYIDEA_STATE', {
-        module      : 'guacTOTP',
-        controller  : 'privacyIDEAStateController',
-        templateUrl : 'app/ext/totp/templates/privacyIDEAStateField.html'
-    });
+    // Populate the hidden field for the connection state
+    $scope.model = $scope.field.privacyIDEAState;
 
 }]);

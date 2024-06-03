@@ -79,8 +79,6 @@ public class AuthenticationCodeField extends Field {
      */
     private UserTOTPKey key;
 
-    private String transactionid = "";
-
     /**
      * Creates a new field which prompts the user for an authentication code
      * generated via TOTP. The user's TOTP key is not exposed for enrollment.
@@ -97,10 +95,6 @@ public class AuthenticationCodeField extends Field {
      */
     public void exposeKey(UserTOTPKey key) {
         this.key = key;
-    }
-
-    public void exposeTransactionID(String transactionid) {
-        this.transactionid = transactionid;
     }
 
     /**
