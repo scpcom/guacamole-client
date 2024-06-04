@@ -5,7 +5,6 @@
     },
 
     "LOGIN" : {
-        "FIELD_HEADER_GUAC_PRIVACYIDEA_STATE" : "",
         "FIELD_HEADER_GUAC_TOTP" : ""
     },
 

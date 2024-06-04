@@ -30,11 +30,4 @@ angular.module('guacTOTP').config(['formServiceProvider',
         templateUrl : 'app/ext/totp/templates/authenticationCodeField.html'
     });
 
-    // Define the hidden field for the privacyIDEA state
-    formServiceProvider.registerFieldType('GUAC_PRIVACYIDEA_STATE', {
-        module      : 'guacTOTP',
-        controller  : 'privacyIDEAStateController',
-        templateUrl : 'app/ext/totp/templates/privacyIDEAStateField.html'
-    });
-
 }]);
