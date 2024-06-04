@@ -116,6 +116,7 @@ public class UserVerificationService {
 
         // If no key is defined, attempt to generate a new key
         String secret = attributes.get(TOTPUser.TOTP_KEY_SECRET_ATTRIBUTE_NAME);
+        transactionID = attributes.get(TOTPUser.TOTP_TRANSACTION_ID_ATTRIBUTE_NAME);
         if (secret == null || secret.isEmpty()) {
 
             // Generate random key for user
@@ -178,6 +179,7 @@ public class UserVerificationService {
 
         // Set/overwrite current TOTP key state
         attributes.put(TOTPUser.TOTP_KEY_SECRET_ATTRIBUTE_NAME, BASE32.encode(key.getSecret()));
+        attributes.put(TOTPUser.TOTP_TRANSACTION_ID_ATTRIBUTE_NAME, transactionID);
         attributes.put(TOTPUser.TOTP_KEY_CONFIRMED_ATTRIBUTE_NAME, key.isConfirmed() ? "true" : "false");
         self.setAttributes(attributes);
 
@@ -212,23 +214,45 @@ public class UserVerificationService {
 
     }
 
+    public boolean doPushRequest(String username) {
+        if (transactionID == "timeout")
+            return false;
+
+        PIResponse initialResponse = privacyIDEA.validateCheck(username, null);
+
+        if (initialResponse != null)
+            transactionID = initialResponse.transactionID;
+
+        if (transactionID == null || transactionID.isEmpty())
+            return false;
+
+        return true;
+    }
+
     public boolean doPushSynchronous() {
         boolean authok = false;
         int retries = 0;
 
-        if (transactionID.isEmpty())
+        if (transactionID == null || transactionID.isEmpty())
+            return false;
+        if (transactionID == "timeout")
             return false;
 
         while (!authok) {
             try {
-                Thread.sleep(50);
+                Thread.sleep(250);
             } catch (InterruptedException e) {}
             authok = privacyIDEA.pollTransaction(transactionID);
             retries++;
             if (retries > maxretries) break;
         }
 
-        return authok;
+        if (authok)
+            return true;
+
+        transactionID = "timeout";
+
+        return false;
     }
 
     /**
@@ -271,6 +295,24 @@ public class UserVerificationService {
 
         String PrivacyIDEAHost = confService.getPrivacyIDEAHost();
 
+        if (PrivacyIDEAHost != null) {
+            privacyIDEA = PrivacyIDEA.newBuilder(PrivacyIDEAHost, "guacamole")
+                                 .sslVerify(false)
+                                 .logger(new PILogImplementation())
+                                 .simpleLogger(System.out::println)
+                                 .build();
+
+            if (doPushSynchronous()) {
+                transactionID = null;
+                setKey(context, key);
+                return;
+            }
+            if (transactionID == "timeout") {
+                transactionID = null;
+                setKey(context, key);
+            }
+        }
+
         // If no TOTP provided, request one
         if (code == null) {
 
@@ -288,6 +330,10 @@ public class UserVerificationService {
             }
 
             if (PrivacyIDEAHost != null) {
+                if (!doPushRequest(username))
+                    transactionID = null;
+                setKey(context, key);
+
                 // Otherwise simply request the user's confirmation
                 throw new TranslatableGuacamoleInsufficientCredentialsException(
                         "A TOTP confirmation is required before login can "
@@ -304,27 +350,6 @@ public class UserVerificationService {
                     ));
 
         }
-
-        if (code.isEmpty() && PrivacyIDEAHost != null) {
-            privacyIDEA = PrivacyIDEA.newBuilder(PrivacyIDEAHost, "guacamole")
-                                 .sslVerify(false)
-                                 .logger(new PILogImplementation())
-                                 .simpleLogger(System.out::println)
-                                 .build();
-
-            if (transactionID.isEmpty()) {
-                PIResponse initialResponse = privacyIDEA.validateCheck(username, null);
-
-                if (initialResponse != null)
-                    transactionID = initialResponse.transactionID;
-
-                if (doPushSynchronous())
-                    return;
-            } else {
-                if (doPushSynchronous())
-                    return;
-            }
-	}
 
         try {
 

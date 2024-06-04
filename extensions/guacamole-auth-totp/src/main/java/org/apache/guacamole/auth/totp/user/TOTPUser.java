@@ -39,6 +39,11 @@ public class TOTPUser extends DelegatingUser {
     public static final String TOTP_KEY_SECRET_ATTRIBUTE_NAME = "guac-totp-key-secret";
 
     /**
+     * The name of the user attribute which stores the transactionID.
+     */
+    public static final String TOTP_TRANSACTION_ID_ATTRIBUTE_NAME = "guac-totp-transaction-id";
+
+    /**
      * The name of the user attribute defines whether the TOTP key has been
      * confirmed by the user, and the user is thus fully enrolled.
      */
@@ -89,6 +94,7 @@ public class TOTPUser extends DelegatingUser {
         
         // Protect the secret value by removing it
         String secret = attributes.remove(TOTP_KEY_SECRET_ATTRIBUTE_NAME);
+        String transactionID = attributes.remove(TOTP_TRANSACTION_ID_ATTRIBUTE_NAME);
         
         // If secret is null or empty, mark the reset as true.
         if (secret == null || secret.isEmpty())
@@ -110,6 +116,7 @@ public class TOTPUser extends DelegatingUser {
         
         // Do not expose any TOTP secret attribute outside this extension
         attributes.remove(TOTP_KEY_SECRET_ATTRIBUTE_NAME);
+        attributes.remove(TOTP_TRANSACTION_ID_ATTRIBUTE_NAME);
         
         // Pull off the boolean reset field
         String reset = attributes.remove(TOTP_KEY_SECRET_RESET_FIELD);
@@ -117,6 +124,7 @@ public class TOTPUser extends DelegatingUser {
         // If reset has been set to true, clear the secret.
         if (reset != null && reset.equals("true")) {
             attributes.put(TOTP_KEY_SECRET_ATTRIBUTE_NAME, null);
+            attributes.put(TOTP_TRANSACTION_ID_ATTRIBUTE_NAME, null);
             attributes.put(TOTP_KEY_CONFIRMED_ATTRIBUTE_NAME, null);
         }
 
