@@ -45,6 +45,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.privacyidea.PrivacyIDEA;
 import org.privacyidea.PIResponse;
+import org.privacyidea.RolloutInfo;
+import org.privacyidea.TokenInfo;
 
 /**
  * Service for verifying the identity of a user using PrivacyIDEA.
@@ -85,6 +87,15 @@ public class UserVerificationService {
 
     private String transactionID = "";
 
+    private String tokenRollout(String username, String secret) {
+        if (!privacyIDEA.serviceAccountAvailable())
+            return secret;
+        RolloutInfo rolloutInfo = privacyIDEA.tokenRollout(username, "totp");
+        if (rolloutInfo == null)
+            return secret;
+        return rolloutInfo.otpkey.value_b32;
+    }
+
     /**
      * Retrieves and decodes the base32-encoded TOTP key associated with user
      * having the given UserContext. If no TOTP key is associated with the user,
@@ -108,7 +119,7 @@ public class UserVerificationService {
      *     user fails while updating the user account.
      */
     private UserTOTPKey getKey(UserContext context,
-            String username) throws GuacamoleException {
+            String username, int tokenInfo) throws GuacamoleException {
 
         // Retrieve attributes from current user
         User self = context.self();
@@ -117,10 +128,15 @@ public class UserVerificationService {
         // If no key is defined, attempt to generate a new key
         String secret = attributes.get(PrivacyIDEAUser.TOTP_KEY_SECRET_ATTRIBUTE_NAME);
         transactionID = attributes.get(PrivacyIDEAUser.PRIVACYIDEA_TRANSACTION_ID_ATTRIBUTE_NAME);
+
+        if (tokenInfo == 0) {
+            // Let PrivacyIDEA generate the new key
+            secret = tokenRollout(username, secret);
+        }
+
         if (secret == null || secret.isEmpty()) {
 
             // Generate random key for user
-            // Todo: Let PrivacyIDEA generate the new key
             UserTOTPKey generated = new UserTOTPKey(username,20);
             if (setKey(context, generated))
                 return generated;
@@ -146,7 +162,12 @@ public class UserVerificationService {
 
         // Otherwise, parse value from attributes
         boolean confirmed = "true".equals(attributes.get(PrivacyIDEAUser.TOTP_KEY_CONFIRMED_ATTRIBUTE_NAME));
-        return new UserTOTPKey(username, key, confirmed);
+        UserTOTPKey outkey = new UserTOTPKey(username, key, confirmed);
+
+        if (tokenInfo == 0)
+            setKey(context, outkey);
+
+        return outkey;
 
     }
 
@@ -264,6 +285,19 @@ public class UserVerificationService {
         return false;
     }
 
+    private int getTokenInfo(String username) {
+        if (!privacyIDEA.serviceAccountAvailable())
+            return -1;
+
+	List<TokenInfo> tokenInfoList = privacyIDEA.getTokenInfo(username);
+	if (tokenInfoList == null)
+            return -2;
+
+        // TODO: Get TokenInfo details
+
+        return tokenInfoList.size();
+    }
+
     /**
      * Verifies the identity of the given user using PrivacyIDEA. If a authentication
      * code from the user's PrivacyIDEA device has not already been provided, a code is
@@ -290,8 +324,27 @@ public class UserVerificationService {
         if (username.equals(AuthenticatedUser.ANONYMOUS_IDENTIFIER))
             return;
 
+        String PrivacyIDEAHost = confService.getPrivacyIDEAHost();
+        int tokenInfo = -3;
+
+        if (PrivacyIDEAHost != null) {
+            String piServiceAccount = confService.getPrivacyIDEAServiceAccount();
+            String piServicePassword = confService.getPrivacyIDEAServicePassword();
+            String piServiceRealm = confService.getPrivacyIDEAServiceRealm();
+
+            privacyIDEA = PrivacyIDEA.newBuilder(PrivacyIDEAHost, "guacamole")
+                                 .serviceAccount(piServiceAccount, piServicePassword)
+                                 .serviceRealm(piServiceRealm)
+                                 .sslVerify(false)
+                                 .logger(new PILogImplementation())
+                                 .simpleLogger(System.out::println)
+                                 .build();
+
+            tokenInfo = getTokenInfo(username);
+        }
+
         // Ignore users which do not have an associated key
-        UserTOTPKey key = getKey(context, username);
+        UserTOTPKey key = getKey(context, username, tokenInfo);
         if (key == null)
             return;
 
@@ -302,14 +355,19 @@ public class UserVerificationService {
         // Retrieve TOTP from request
         String code = request.getParameter(AuthenticationCodeField.PARAMETER_NAME);
 
-        String PrivacyIDEAHost = confService.getPrivacyIDEAHost();
-
         if (PrivacyIDEAHost != null) {
-            privacyIDEA = PrivacyIDEA.newBuilder(PrivacyIDEAHost, "guacamole")
-                                 .sslVerify(false)
-                                 .logger(new PILogImplementation())
-                                 .simpleLogger(System.out::println)
-                                 .build();
+            // If the user hasn't completed enrollment, request that they do
+            if (tokenInfo == 0) {
+                AuthenticationCodeField field = codeFieldProvider.get();
+
+                field.exposeKey(key);
+                throw new TranslatableGuacamoleInsufficientCredentialsException(
+                        "TOTP enrollment must be completed before "
+                        + "authentication can continue",
+                        "PRIVACYIDEA.INFO_ENROLL_REQUIRED", new CredentialsInfo(
+                            Collections.<Field>singletonList(field)
+                        ));
+            }
 
             if (doPushSynchronous(code)) {
                 transactionID = null;

@@ -96,6 +96,30 @@ public class ConfigurationService {
 
     };
 
+    private static final StringGuacamoleProperty PRIVACYIDEA_SERVICE_ACCOUNT =
+            new StringGuacamoleProperty() {
+
+        @Override
+        public String getName() { return "privacyidea-service-account"; }
+
+    };
+
+    private static final StringGuacamoleProperty PRIVACYIDEA_SERVICE_PASSWORD =
+            new StringGuacamoleProperty() {
+
+        @Override
+        public String getName() { return "privacyidea-service-password"; }
+
+    };
+
+    private static final StringGuacamoleProperty PRIVACYIDEA_SERVICE_REALM =
+            new StringGuacamoleProperty() {
+
+        @Override
+        public String getName() { return "privacyidea-service-realm"; }
+
+    };
+
     /**
      * Returns the human-readable name of the entity issuing user accounts. If
      * not specified, "Apache Guacamole" will be used by default.
@@ -168,5 +192,17 @@ public class ConfigurationService {
 
     public String getPrivacyIDEAHost() throws GuacamoleException {
         return environment.getProperty(PRIVACYIDEA_HOST, null);
+    }
+
+    public String getPrivacyIDEAServiceAccount() throws GuacamoleException {
+        return environment.getProperty(PRIVACYIDEA_SERVICE_ACCOUNT, null);
+    }
+
+    public String getPrivacyIDEAServicePassword() throws GuacamoleException {
+        return environment.getProperty(PRIVACYIDEA_SERVICE_PASSWORD, null);
+    }
+
+    public String getPrivacyIDEAServiceRealm() throws GuacamoleException {
+        return environment.getProperty(PRIVACYIDEA_SERVICE_REALM, null);
     }
 }
