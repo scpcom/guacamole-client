@@ -26,7 +26,6 @@ import org.apache.guacamole.environment.Environment;
 import org.apache.guacamole.properties.EnumGuacamoleProperty;
 import org.apache.guacamole.properties.IntegerGuacamoleProperty;
 import org.apache.guacamole.properties.StringGuacamoleProperty;
-import org.apache.guacamole.privacyidea.TOTPGenerator;
 
 /**
  * Service for retrieving configuration information regarding the PrivacyIDEA
@@ -81,8 +80,8 @@ public class ConfigurationService {
      * default, this will be "sha1". Legal values are "sha1", "sha256", and
      * "sha512".
      */
-    private static final EnumGuacamoleProperty<TOTPGenerator.Mode> TOTP_MODE =
-            new EnumGuacamoleProperty<TOTPGenerator.Mode>(TOTPGenerator.Mode.class) {
+    private static final StringGuacamoleProperty TOTP_MODE =
+            new StringGuacamoleProperty() {
 
         @Override
         public String getName() { return "totp-mode"; }
@@ -163,8 +162,8 @@ public class ConfigurationService {
      *     If the "totp-mode" property cannot be read from
      *     guacamole.properties.
      */
-    public TOTPGenerator.Mode getMode() throws GuacamoleException {
-        return environment.getProperty(TOTP_MODE, TOTPGenerator.Mode.SHA1);
+    public String getMode() throws GuacamoleException {
+        return environment.getProperty(TOTP_MODE, "sha1");
     }
 
     public String getPrivacyIDEAHost() throws GuacamoleException {

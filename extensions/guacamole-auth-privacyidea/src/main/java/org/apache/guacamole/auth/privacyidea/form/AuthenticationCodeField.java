@@ -34,7 +34,6 @@ import org.apache.guacamole.GuacamoleException;
 import org.apache.guacamole.auth.privacyidea.user.UserTOTPKey;
 import org.apache.guacamole.auth.privacyidea.conf.ConfigurationService;
 import org.apache.guacamole.form.Field;
-import org.apache.guacamole.privacyidea.TOTPGenerator;
 
 /**
  * Field which prompts the user for an authentication code generated via TOTP.
@@ -195,7 +194,7 @@ public class AuthenticationCodeField extends Field {
      * @throws GuacamoleException
      *     If the TOTP mode cannot be read from guacamole.properties.
      */
-    public TOTPGenerator.Mode getMode() throws GuacamoleException {
+    public String getMode() throws GuacamoleException {
 
         // Do not reveal TOTP mode unless enrollment is in progress
         if (key == null)

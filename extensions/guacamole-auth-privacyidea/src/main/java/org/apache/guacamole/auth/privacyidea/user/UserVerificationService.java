@@ -41,7 +41,6 @@ import org.apache.guacamole.net.auth.Credentials;
 import org.apache.guacamole.net.auth.User;
 import org.apache.guacamole.net.auth.UserContext;
 import org.apache.guacamole.net.auth.credentials.CredentialsInfo;
-import org.apache.guacamole.privacyidea.TOTPGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.privacyidea.PrivacyIDEA;
@@ -122,8 +121,7 @@ public class UserVerificationService {
 
             // Generate random key for user
             // Todo: Let PrivacyIDEA generate the new key
-            TOTPGenerator.Mode mode = confService.getMode();
-            UserTOTPKey generated = new UserTOTPKey(username,mode.getRecommendedKeyLength());
+            UserTOTPKey generated = new UserTOTPKey(username,20);
             if (setKey(context, generated))
                 return generated;
 
