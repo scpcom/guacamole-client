@@ -235,7 +235,7 @@ public class UserVerificationService {
 
     }
 
-    public boolean doPushRequest(String username, String otp) {
+    private boolean doValidateCheck(String username, String otp) {
         if (transactionID == "timeout")
             return false;
 
@@ -257,7 +257,7 @@ public class UserVerificationService {
         return true;
     }
 
-    public boolean doPushSynchronous(String otp) {
+    private boolean doPollTransaction(String otp) {
         boolean authok = false;
         int retries = 0;
 
@@ -369,7 +369,7 @@ public class UserVerificationService {
                         ));
             }
 
-            if (doPushSynchronous(code)) {
+            if (doPollTransaction(code)) {
                 transactionID = null;
                 if (!key.isConfirmed())
                     key.setConfirmed(true);
@@ -381,7 +381,7 @@ public class UserVerificationService {
                 setKey(context, key);
             }
 
-            if (!doPushRequest(username, code)) {
+            if (!doValidateCheck(username, code)) {
                 transactionID = null;
             }
             if (transactionID == "totp-ok") {
