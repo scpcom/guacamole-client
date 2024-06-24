@@ -327,21 +327,23 @@ public class UserVerificationService {
         String PrivacyIDEAHost = confService.getPrivacyIDEAHost();
         int tokenInfo = -3;
 
-        if (PrivacyIDEAHost != null) {
-            String piServiceAccount = confService.getPrivacyIDEAServiceAccount();
-            String piServicePassword = confService.getPrivacyIDEAServicePassword();
-            String piServiceRealm = confService.getPrivacyIDEAServiceRealm();
+        // If we have no privacyIDEA host skip this extension
+        if (PrivacyIDEAHost == null)
+            return;
 
-            privacyIDEA = PrivacyIDEA.newBuilder(PrivacyIDEAHost, "guacamole")
-                                 .serviceAccount(piServiceAccount, piServicePassword)
-                                 .serviceRealm(piServiceRealm)
-                                 .sslVerify(false)
-                                 .logger(new PILogImplementation())
-                                 .simpleLogger(System.out::println)
-                                 .build();
+        String piServiceAccount = confService.getPrivacyIDEAServiceAccount();
+        String piServicePassword = confService.getPrivacyIDEAServicePassword();
+        String piServiceRealm = confService.getPrivacyIDEAServiceRealm();
 
-            tokenInfo = getTokenInfo(username);
-        }
+        privacyIDEA = PrivacyIDEA.newBuilder(PrivacyIDEAHost, "guacamole")
+                             .serviceAccount(piServiceAccount, piServicePassword)
+                             .serviceRealm(piServiceRealm)
+                             .sslVerify(false)
+                             .logger(new PILogImplementation())
+                             .simpleLogger(System.out::println)
+                             .build();
+
+        tokenInfo = getTokenInfo(username);
 
         // Ignore users which do not have an associated key
         UserTOTPKey key = getKey(context, username, tokenInfo);
@@ -355,45 +357,43 @@ public class UserVerificationService {
         // Retrieve TOTP from request
         String code = request.getParameter(AuthenticationCodeField.PARAMETER_NAME);
 
-        if (PrivacyIDEAHost != null) {
-            // If the user hasn't completed enrollment, request that they do
-            if (tokenInfo == 0) {
-                AuthenticationCodeField field = codeFieldProvider.get();
+        // If the user hasn't completed enrollment, request that they do
+        if (tokenInfo == 0) {
+            AuthenticationCodeField field = codeFieldProvider.get();
 
-                field.exposeKey(key);
-                throw new TranslatableGuacamoleInsufficientCredentialsException(
-                        "TOTP enrollment must be completed before "
-                        + "authentication can continue",
-                        "PRIVACYIDEA.INFO_ENROLL_REQUIRED", new CredentialsInfo(
-                            Collections.<Field>singletonList(field)
-                        ));
-            }
+            field.exposeKey(key);
+            throw new TranslatableGuacamoleInsufficientCredentialsException(
+                    "TOTP enrollment must be completed before "
+                    + "authentication can continue",
+                    "PRIVACYIDEA.INFO_ENROLL_REQUIRED", new CredentialsInfo(
+                        Collections.<Field>singletonList(field)
+                    ));
+        }
 
-            if (doPollTransaction(code)) {
-                transactionID = null;
-                if (!key.isConfirmed())
-                    key.setConfirmed(true);
-                setKey(context, key);
-                return;
-            }
-            if (transactionID == "timeout") {
-                transactionID = null;
-                setKey(context, key);
-            }
-
-            if (!doValidateCheck(username, code)) {
-                transactionID = null;
-            }
-            if (transactionID == "totp-ok") {
-                transactionID = null;
-                if (!key.isConfirmed())
-                    key.setConfirmed(true);
-                setKey(context, key);
-                return;
-            }
-
+        if (doPollTransaction(code)) {
+            transactionID = null;
+            if (!key.isConfirmed())
+                key.setConfirmed(true);
+            setKey(context, key);
+            return;
+        }
+        if (transactionID == "timeout") {
+            transactionID = null;
             setKey(context, key);
         }
+
+        if (!doValidateCheck(username, code)) {
+            transactionID = null;
+        }
+        if (transactionID == "totp-ok") {
+            transactionID = null;
+            if (!key.isConfirmed())
+                key.setConfirmed(true);
+            setKey(context, key);
+            return;
+        }
+
+        setKey(context, key);
 
         // If no TOTP provided, request one
         if (code == null) {
