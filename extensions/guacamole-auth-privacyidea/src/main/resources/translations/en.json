@@ -34,8 +34,8 @@
 
     "USER_ATTRIBUTES" : {
 
-        "FIELD_HEADER_GUAC_PRIVACYIDEA_RESET"         : "Clear TOTP secret:",
-        "FIELD_HEADER_GUAC_PRIVACYIDEA_KEY_CONFIRMED" : "TOTP key confirmed:",
+        "FIELD_HEADER_GUAC_TOTP_RESET"         : "Clear TOTP secret:",
+        "FIELD_HEADER_GUAC_TOTP_KEY_CONFIRMED" : "TOTP key confirmed:",
 
         "SECTION_HEADER_PRIVACYIDEA_CONFIG_FORM" : "Configure PrivacyIDEA"
 
